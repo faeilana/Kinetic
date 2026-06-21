@@ -1,7 +1,8 @@
 import { initSentry } from './sentry.js';
 import { setupWebcam } from './pose/webcam.js';
 import { createPoseDetector, detectPose } from './pose/detector.js';
-import { classifyPose, calibrate } from './pose/classifier.js';
+import { PoseClassifier, calibrate } from './pose/classifier.js';
+import { PoseHistory } from './pose/history.js';
 import { drawSkeleton } from './pose/skeleton.js';
 import { Game } from './game/game.js';
 import { sendPrediction } from './api.js';
@@ -26,6 +27,13 @@ let calibrationFrames = [];
 let countdownValue = 3;
 let countdownTimer = null;
 
+const poseHistory = new PoseHistory();
+const poseClassifier = new PoseClassifier();
+
+// Shared pose state (updated by detection loop, read by game loop)
+let latestKeypoints = null;
+let poseReady = false;
+
 const statusEl = document.getElementById('status-text');
 const countdownEl = document.getElementById('countdown');
 const skeletonCanvas = document.getElementById('skeleton-canvas');
@@ -46,7 +54,10 @@ async function init() {
     game = new Game(document.getElementById('game-canvas'));
 
     setState(States.CALIBRATING);
-    requestAnimationFrame(loop);
+
+    // Start decoupled loops
+    poseDetectionLoop();
+    requestAnimationFrame(gameLoop);
   } catch (err) {
     statusEl.textContent = `Error: ${err.message}`;
     console.error(err);
@@ -71,6 +82,8 @@ function setState(newState) {
       break;
     case States.PLAYING:
       statusEl.textContent = '';
+      poseClassifier.reset();
+      poseHistory.clear();
       game.start();
       break;
     case States.DEAD:
@@ -106,38 +119,52 @@ function isHandRaised(keypoints) {
   return leftWrist.y < shoulderY || rightWrist.y < shoulderY;
 }
 
-async function loop() {
+// Pose detection runs in its own async loop, decoupled from rendering
+async function poseDetectionLoop() {
   if (!video || !detector) return;
 
   const poses = await detectPose(detector, video);
 
   if (poses && poses.length > 0) {
-    const keypoints = poses[0].keypoints;
+    latestKeypoints = poses[0].keypoints;
+    poseHistory.push(latestKeypoints);
+    poseReady = true;
+  }
 
+  // Schedule next detection immediately (no waiting for rAF)
+  setTimeout(poseDetectionLoop, 0);
+}
+
+// Game loop runs at display refresh rate, independent of pose detection speed
+function gameLoop() {
+  if (poseReady && latestKeypoints) {
+    const smoothedKeypoints = poseHistory.getSmoothed() || latestKeypoints;
+
+    // Draw skeleton with smoothed keypoints
     skeletonCtx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
-    drawSkeleton(skeletonCtx, keypoints, skeletonCanvas.width, skeletonCanvas.height);
+    drawSkeleton(skeletonCtx, smoothedKeypoints, skeletonCanvas.width, skeletonCanvas.height);
 
     switch (state) {
       case States.CALIBRATING:
-        handleCalibration(keypoints);
+        handleCalibration(smoothedKeypoints);
         break;
       case States.WAITING:
-        if (isHandRaised(keypoints)) {
+        if (isHandRaised(smoothedKeypoints)) {
           setState(States.COUNTDOWN);
         }
         break;
       case States.PLAYING:
-        handlePlaying(keypoints);
+        handlePlaying(smoothedKeypoints);
         break;
       case States.DEAD:
-        if (isHandRaised(keypoints)) {
+        if (isHandRaised(smoothedKeypoints)) {
           setState(States.WAITING);
         }
         break;
     }
   }
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
 
 function handleCalibration(keypoints) {
@@ -153,7 +180,11 @@ function handleCalibration(keypoints) {
 }
 
 function handlePlaying(keypoints) {
-  const { action, confidence } = classifyPose(keypoints, calibrationData);
+  const { action, confidence } = poseClassifier.classify(
+    keypoints,
+    calibrationData,
+    poseHistory
+  );
 
   game.setAction(action);
   game.update();
