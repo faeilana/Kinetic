@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinetic Runner</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" width="800" height="400"></canvas>
+    <div id="webcam-container">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="skeleton-canvas"></canvas>
+    </div>
+    <div id="overlay">
+      <div id="status-text"></div>
+      <div id="countdown"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

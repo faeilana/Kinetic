@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+backend/.env
+backend/kinetic.db
+backend/__pycache__/
+backend/*.pyc
+.vite/
+*.log
