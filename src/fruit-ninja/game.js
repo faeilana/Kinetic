@@ -53,6 +53,7 @@ export class FruitNinjaGame {
     // Check for missed fruits
     const missed = this.spawner.getMissedFruits();
     for (const fruit of missed) {
+      fruit.missedCounted = true;
       this.missedCount++;
       if (this.missedCount >= MAX_MISSED) {
         this.lives--;

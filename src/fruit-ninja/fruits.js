@@ -28,6 +28,7 @@ export class Fruit {
     this.sliced = false;
     this.sliceTime = 0;
     this.missed = false;
+    this.missedCounted = false;
   }
 
   update() {
@@ -47,7 +48,7 @@ export class Fruit {
   }
 
   isOffScreen() {
-    return this.missed || (this.sliced && this.sliceTime > 30);
+    return (this.missed && this.missedCounted) || (this.sliced && this.sliceTime > 30);
   }
 
   slice() {
@@ -194,6 +195,7 @@ export class FruitSpawner {
     this.spawnTimer = 0;
     this.spawnInterval = 60;
     this.waveSize = 1;
+    this.bombChance = 0.15;
     this.difficulty = 0;
   }
 
@@ -210,7 +212,7 @@ export class FruitSpawner {
       fruit.update();
     }
 
-    // Remove off-screen fruits
+    // Remove off-screen fruits (missed ones stay until game marks them counted)
     this.fruits = this.fruits.filter((f) => !f.isOffScreen());
   }
 
@@ -243,7 +245,7 @@ export class FruitSpawner {
   }
 
   getMissedFruits() {
-    return this.fruits.filter((f) => f.missed && !f.sliced && f.type.name !== 'bomb');
+    return this.fruits.filter((f) => f.missed && !f.missedCounted && !f.sliced && f.type.name !== 'bomb');
   }
 
   getActiveFruits() {
