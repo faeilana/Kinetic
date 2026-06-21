@@ -1,10 +1,20 @@
 import * as poseDetection from '@tensorflow-models/pose-detection';
 import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
+import '@tensorflow/tfjs-backend-cpu';
 
 export async function createPoseDetector() {
-  await tf.setBackend('webgl');
-  await tf.ready();
+  // Try webgl first, fall back to cpu
+  try {
+    await tf.setBackend('webgl');
+    await tf.ready();
+    console.log('Using WebGL backend');
+  } catch (e) {
+    console.warn('WebGL backend failed, falling back to CPU:', e.message);
+    await tf.setBackend('cpu');
+    await tf.ready();
+    console.log('Using CPU backend');
+  }
 
   const detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet,
