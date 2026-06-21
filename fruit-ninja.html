@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinetic Fruit Ninja</title>
+  <link rel="stylesheet" href="/src/fruit-ninja/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" width="800" height="500"></canvas>
+    <div id="webcam-container">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="skeleton-canvas"></canvas>
+    </div>
+    <div id="overlay">
+      <div id="status-text"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/fruit-ninja/main.js"></script>
+</body>
+</html>
